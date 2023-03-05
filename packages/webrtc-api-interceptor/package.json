@@ -4,6 +4,7 @@
   "main": "dist/index.js",
   "devDependencies": {},
   "scripts": {
-    "build": ""
+    "build": "",
+    "lint": "eslint --fix ./lib/"
   }
 }
