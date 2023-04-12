@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -25,9 +26,10 @@ func (ws *WS) Init() {
 
 func (ws *WS) handler(conn *websocket.Conn) {
 	log.Printf("ws open")
+	var message string
 	for {
-		frame := make([]byte, 10240)
-		len, err := conn.Read(frame)
+		frame := make([]byte, 4088)
+		size, err := conn.Read(frame)
 		if err != nil {
 			// TODO ERROR handle
 			if err == io.EOF {
@@ -39,9 +41,36 @@ func (ws *WS) handler(conn *websocket.Conn) {
 			}
 		}
 
-		frame = frame[:len]
-		log.Printf("ws receive %s", frame)
+		frame = frame[:size]
+		message += string(frame)
+		if size < 4088 {
+			log.Printf("ws receive %s %d", message, len(message))
+			ws.frameHandler(conn, []byte(message))
+			message = ""
+		}
+	}
+}
 
-		conn.Write(frame)
+func (ws *WS) frameHandler(conn *websocket.Conn, frame []byte) {
+	req := &Req{}
+	if err := json.Unmarshal(frame, req); err != nil {
+		log.Println("json error", err.Error())
+		res, _ := FormatErrorRsp(err)
+		conn.Write(res)
+		return
+	}
+
+	switch req.Cmd {
+	case "live":
+		pc, err := NewLiveRTCConnection(req.Data)
+		if err != nil {
+			log.Println("pc error", err.Error())
+			res, _ := FormatErrorRsp(err)
+			conn.Write(res)
+			return
+		}
+		res, _ := FormatSuccRsp(pc.LocalDescription().SDP)
+		conn.Write(res)
+		return
 	}
 }

@@ -39,4 +39,4 @@ testem.log
 Thumbs.db
 
 # demo binary file
-./demo/server/wscdemo
+demo/server/wscdemo
